@@ -3,6 +3,7 @@ import type { ISlot } from '@/models/Slot'
 import { SlotType } from '@/models/Slot'
 import type ICard from '@/models/Card'
 import { Descent, type IBus, type ICardHoveredMessage, type IMoveMessage } from './bus'
+import type { ISettings } from './settings'
 
 const total: number = 13 * 4 * 2
 const defaultDeck: CardValue[] = [
@@ -33,7 +34,10 @@ export class Game implements IGame {
   time: number = 0
   moves: number = 0
 
-  constructor(private bus: IBus) {
+  constructor(
+    private bus: IBus,
+    private settings: ISettings
+  ) {
     for (let i = 0; i < 10; i++) this.columns.push([])
     for (let i = 0; i < 8; i++) this.results.push([])
 
@@ -49,9 +53,11 @@ export class Game implements IGame {
       this.closed.push(card.title)
     }
 
-    const seed: number = Number.parseInt(Math.random().toString()[5])
-    for (const i in [...Array(seed || 1).keys()]) {
-      this.closed = this.closed.sort(() => Math.random() - 0.5)
+    if (settings.randomize) {
+      const seed: number = Number.parseInt(Math.random().toString()[5])
+      for (const i in [...Array(seed || 1).keys()]) {
+        this.closed = this.closed.sort(() => Math.random() - 0.5)
+      }
     }
 
     bus.onCardHover().subscribe((m) => this.onCardHovered(m))
@@ -130,7 +136,7 @@ export class Game implements IGame {
     this.tryPlaceToColumns(card, fromSlot, this.columns[fromSlot.index || 0], true)
   }
   resultDeckCardClicked(card: ICard, fromSlot: ISlot): void {
-    this.tryPlaceToResults(card, fromSlot, this.results[fromSlot.index || 0])
+    this.tryPlaceToColumns(card, fromSlot, this.results[fromSlot.index || 0], false)
   }
 
   tryPlaceToResults(card: ICard, fromSlot: ISlot, slotArray: string[]): boolean {
@@ -317,6 +323,6 @@ export interface IGame {
   deck: Map<string, ICard>
 }
 
-export default function (bus: IBus): IGame {
-  return new Game(bus)
+export default function (bus: IBus, settings: ISettings): IGame {
+  return new Game(bus, settings)
 }

@@ -9,7 +9,7 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 ## Bugs:
 
 - cannot move to card if last card on slot and free slot available
-- cannot move from results to playfield
+- ~~cannot move from results to playfield~~
 
 ---
 
@@ -17,6 +17,9 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 
 - light theme
 - move two cards to free slot (FF)
+- ~~settings / feature flags~~
+- settings UI
+- disable hepler behavior
 
 ---
 
