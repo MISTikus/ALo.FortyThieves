@@ -223,14 +223,14 @@ export class Game implements IGame {
       if (!isLast) return
     }
     if (msg.from.type === SlotType.DeckClosed) {
-      this.bus.hover(null, { type: SlotType.DeckClosed }, 'pirple')
+      this.bus.hover(null, { type: SlotType.DeckClosed }, 'var(--border-hover)')
       return
     }
 
     this.freeSlots = []
     for (let i = 0; i < 8; i++) {
       if (this.canPlaceResult(i, msg.card)) {
-        this.bus.hover(msg.card, msg.from, 'purple')
+        this.bus.hover(msg.card, msg.from, 'var(--border-hover)')
         const topCardTitle = this.results[i][this.results[i].length - 1]
         const slot = { type: SlotType.Result, index: i }
         if (topCardTitle) {

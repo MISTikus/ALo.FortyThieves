@@ -15,7 +15,7 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 
 ## ToDo:
 
-- light theme
+- ~~light theme~~
 - move two cards to free slot (FF)
 - ~~settings / feature flags~~
 - settings UI

@@ -154,7 +154,6 @@ function toTime(time: number): string {
     flex-direction: column;
     justify-content: start;
     gap: var(--default-gap);
-    padding: var(--default-padding);
 }
 
 .deck-row {
@@ -164,7 +163,7 @@ function toTime(time: number): string {
     justify-content: space-around;
     gap: var(--default-gap);
     padding: var(--default-padding);
-    background-color: var(--vt-c-black-mute);
+    background-color: var(--color-background-mute);
 }
 
 .results {
@@ -176,12 +175,19 @@ function toTime(time: number): string {
 .deck {
     display: flex;
     flex-direction: row;
+    justify-content: flex-end;
     gap: calc(var(--default-gap) / 4);
 }
 
 .columns {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
+    align-self: center;
+    justify-content: space-around;
+    justify-items: center;
+    /* gap: 21px; */
+    width: 100%;
+    padding: var(--default-padding);
 }
 
 .finish-modal {
@@ -190,7 +196,7 @@ function toTime(time: number): string {
     height: 12rem;
     top: calc(50% - 12rem/2);
     left: calc(50% - 24rem/2);
-    background-color: gray;
+    background-color: var(--color-background-mute);
     border: 2px solid black;
     border-radius: 8px;
     z-index: 100;

@@ -108,23 +108,23 @@ function onCardClicked() {
     background-repeat: no-repeat;
     background-size: 1760px 200px;
     background-position-y: -10px;
-    border: 2px solid gray;
+    border: 2px solid var(--color-border);
 }
 
 .card .card-suit-hearts {
-    background-image: url('../../assets/svg/dark/hearts.svg');
+    background-image: var(--url-hearts);
 }
 
 .card .card-suit-diamonds {
-    background-image: url('../../assets/svg/dark/diamonds.svg');
+    background-image: var(--url-diamonds);
 }
 
 .card .card-suit-clubs {
-    background-image: url('../../assets/svg/dark/clubs.svg');
+    background-image: var(--url-clubs);
 }
 
 .card .card-suit-spades {
-    background-image: url('../../assets/svg/dark/spades.svg');
+    background-image: var(--url-spades);
 }
 
 .card .card-value-ace {
@@ -181,16 +181,20 @@ function onCardClicked() {
 
 .card .back {
     background-image: url('../../assets/svg/card-back.svg');
-    background-size: 584px 428px;
+    /* background-size: 584px 428px; */
+    background-size: 695px 482px;
     background-repeat: no-repeat;
+    background-clip: content-box;
+    border: 2px solid var(--color-border);
+    background-position: var(--card-back-position);
 }
 
 .back-light-diamonds {
-    background-position: -104px -28px
+    background-position: -104px -29px
 }
 
 .back-light-dotted {
-    background-position: -383px -28px;
+    background-position: -383px -29px;
 }
 
 .back-dark-modern {

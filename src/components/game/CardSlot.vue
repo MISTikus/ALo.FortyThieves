@@ -14,7 +14,7 @@ const style = computed(() => (props.style || ""))
 .slot {
     width: var(--card-width);
     height: var(--card-height);
-    border: 2px solid gray;
+    border: 2px solid var(--color-border);
     border-radius: 8px;
 }
 </style>

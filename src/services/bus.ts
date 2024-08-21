@@ -37,7 +37,7 @@ export class Bus implements IBus {
     return this.cardHoveredSubject.asObservable()
   }
 
-  hover(card: ICard | null, from: ISlot, color: string = 'green'): void {
+  hover(card: ICard | null, from: ISlot, color: string = 'var(--color-border-highlight)'): void {
     this.cardHoverSubject.next({ card, from, color })
   }
   onHover(): Observable<ICardHoverMessage> {
