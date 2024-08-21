@@ -100,6 +100,7 @@ export class Game implements IGame {
         this.openedDeckCardClicked(card)
         break
       case SlotType.PlayField:
+        if (!this.columns.map((x) => x[x.length - 1]).filter((x) => x === card.title).length) return
         this.playFieldDeckCardClicked(card, fromSlot)
         break
       case SlotType.Result:
@@ -156,7 +157,7 @@ export class Game implements IGame {
   ): boolean {
     for (let i = 0; i < 10; i++) {
       if (skipIndex && fromSlot.index === i) continue
-      if (this.canPlaceColumn(i, card)) {
+      if (this.canPlaceColumn(i, card, true)) {
         const removed = slotArray.pop()
         if (!removed) throw Error('no card to move in ' + SlotType.PlayField + ':' + i)
         const toSlot = { type: SlotType.PlayField, index: i }
@@ -186,8 +187,8 @@ export class Game implements IGame {
     return false
   }
 
-  canPlaceColumn(index: number, card: ICard): boolean {
-    if (this.columns[index].length === 0) return true
+  canPlaceColumn(index: number, card: ICard, includeEmpty: boolean): boolean {
+    if (this.columns[index].length === 0) return includeEmpty
     const topCardTitle = this.columns[index][this.columns[index].length - 1]
     const topCard = this.deck.get(topCardTitle)
     if (!topCard) throw Error('no card in deck')
@@ -223,7 +224,7 @@ export class Game implements IGame {
     }
     for (let i = 0; i < 10; i++) {
       if (msg.from.index === i) continue
-      if (this.canPlaceColumn(i, msg.card)) {
+      if (this.canPlaceColumn(i, msg.card, false)) {
         this.bus.hover(msg.card, msg.from, 'purple')
         const topCardTitle = this.columns[i][this.columns[i].length - 1]
         const slot = { type: SlotType.Result, index: i }
