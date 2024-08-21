@@ -2,6 +2,8 @@
 
 Forty thieves solitaire card game.
 
+You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieves/)
+
 ---
 
 ## Bugs:
