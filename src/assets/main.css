@@ -20,17 +20,3 @@ a,
     background-color: hsla(160, 100%, 37%, 0.2);
   }
 }
-
-.card {
-  width: var(--card-width);
-  height: var(--card-height);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  transition:
-    top 0.2s ease,
-    left 0.2s ease;
-}
-.card:hover {
-  border: 2px solid purple !important;
-  border-radius: 8px;
-}

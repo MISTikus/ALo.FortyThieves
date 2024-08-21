@@ -1,6 +1,6 @@
 export interface ISlot {
   type: SlotType
-  index: number
+  index?: number
 }
 
 export enum SlotType {

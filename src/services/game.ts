@@ -2,7 +2,7 @@ import { CardValue, Card } from '@/models/Card'
 import type { ISlot } from '@/models/Slot'
 import { SlotType } from '@/models/Slot'
 import type ICard from '@/models/Card'
-import type { IBus, IMoveMessage } from './bus'
+import { Descent, type IBus, type ICardHoveredMessage, type IMoveMessage } from './bus'
 
 const total: number = 13 * 4 * 2
 const defaultDeck: CardValue[] = [
@@ -22,10 +22,13 @@ const defaultDeck: CardValue[] = [
 ]
 
 export class Game implements IGame {
-  closed: ICard[] = []
-  opened: ICard[] = []
-  columns: ICard[][] = []
-  results: ICard[][] = []
+  closed: string[] = []
+  opened: string[] = []
+  columns: string[][] = []
+  results: string[][] = []
+  freeSlots: ISlot[] = []
+  deck: Map<string, ICard> = new Map<string, ICard>()
+
   history: IMoveMessage[] = []
   time: number = 0
   moves: number = 0
@@ -34,11 +37,16 @@ export class Game implements IGame {
     for (let i = 0; i < 10; i++) this.columns.push([])
     for (let i = 0; i < 8; i++) this.results.push([])
 
+    const closedSlot: ISlot = { type: SlotType.DeckClosed }
     for (let i = 0; i < total; i++) {
       const value = defaultDeck[i % 13]
       const suit = Math.floor(i / 13) % 4
-      const card: ICard = new Card(value, suit)
-      this.closed.push(card)
+      const card: ICard = new Card(value, suit, closedSlot)
+      if (this.deck.has(card.title)) {
+        card.title += ':add'
+      }
+      this.deck.set(card.title, card)
+      this.closed.push(card.title)
     }
 
     const seed: number = Number.parseInt(Math.random().toString()[5])
@@ -46,7 +54,8 @@ export class Game implements IGame {
       this.closed = this.closed.sort(() => Math.random() - 0.5)
     }
 
-    this.spawn()
+    bus.onCardHover().subscribe((m) => this.onCardHovered(m))
+    bus.onCardDescended().subscribe(() => this.onCardDescended())
   }
 
   private spawn() {
@@ -55,8 +64,16 @@ export class Game implements IGame {
       if (col >= 10) col = 0
       const card = this.getTopCard()
       if (card === null) continue
-      card.isClosed = false
-      this.columns[col].push(card)
+      card.slot = { type: SlotType.PlayField, index: col }
+      card.index = this.columns[col].length
+      this.columns[col].push(card.title)
+      card.debugData = `Slot: ${col}. Ix: ${card.index}`
+      this.move(
+        card,
+        { type: SlotType.DeckClosed },
+        { type: SlotType.PlayField, index: col },
+        false
+      )
       col++
     }
   }
@@ -66,14 +83,15 @@ export class Game implements IGame {
     const card = this.closed.pop()
     if (card === undefined) return null
     this.bus.deckChanged(this.closed.length)
-    return card
+    return this.deck.get(card) || null
   }
 
   onLoaded() {
-    this.bus.deckChanged(this.closed.length)
+    this.spawn()
   }
 
-  onCardClicked(card: ICard, fromSlot: ISlot): void {
+  onCardClicked(card: ICard): void {
+    const fromSlot = card.slot
     switch (fromSlot.type) {
       case SlotType.DeckClosed:
         this.closedDeckCardClicked()
@@ -93,43 +111,47 @@ export class Game implements IGame {
   closedDeckCardClicked(): void {
     const removed = this.closed.pop()
     if (!removed) throw Error('no card to move in ' + SlotType.DeckClosed)
-    removed.isClosed = false
+    const card = this.deck.get(removed)
+    if (!card) throw Error('no card to move in ' + SlotType.DeckClosed)
+    const toSlot = { type: SlotType.DeckOpened }
+    card.slot = toSlot
+    card.index = this.opened.length
     this.opened.push(removed)
-    this.move(
-      removed,
-      { type: SlotType.DeckClosed, index: 0 },
-      { type: SlotType.DeckOpened, index: 0 }
-    )
+    this.bus.deckChanged(this.closed.length)
+    this.move(card, { type: SlotType.DeckClosed }, { type: SlotType.DeckOpened })
   }
   openedDeckCardClicked(card: ICard): void {
-    if (this.tryPlaceToResults(card, { type: SlotType.DeckOpened, index: 0 }, this.opened)) return
-    this.tryPlaceToColumns(card, { type: SlotType.DeckOpened, index: 0 }, this.opened)
+    if (this.tryPlaceToResults(card, { type: SlotType.DeckOpened }, this.opened)) return
+    this.tryPlaceToColumns(card, { type: SlotType.DeckOpened }, this.opened)
   }
   playFieldDeckCardClicked(card: ICard, fromSlot: ISlot): void {
-    if (this.tryPlaceToResults(card, fromSlot, this.columns[fromSlot.index])) return
-    this.tryPlaceToColumns(card, fromSlot, this.columns[fromSlot.index], true)
+    if (this.tryPlaceToResults(card, fromSlot, this.columns[fromSlot.index || 0])) return
+    this.tryPlaceToColumns(card, fromSlot, this.columns[fromSlot.index || 0], true)
   }
   resultDeckCardClicked(card: ICard, fromSlot: ISlot): void {
-    this.tryPlaceToResults(card, fromSlot, this.results[fromSlot.index])
+    this.tryPlaceToResults(card, fromSlot, this.results[fromSlot.index || 0])
   }
 
-  tryPlaceToResults(card: ICard, fromSlot: ISlot, slotArray: ICard[]): boolean {
+  tryPlaceToResults(card: ICard, fromSlot: ISlot, slotArray: string[]): boolean {
     for (let i = 0; i < 8; i++) {
       if (this.canPlaceResult(i, card)) {
         const removed = slotArray.pop()
         if (!removed) throw Error('no card to move in ' + SlotType.PlayField + ':' + i)
-        removed.isClosed = false
+        const card = this.deck.get(removed)
+        if (!card) throw Error('no card to move in ' + SlotType.PlayField + ':' + i)
+        const toSlot = { type: SlotType.Result, index: i }
+        card.movedTo(toSlot, this.results[i].length)
         this.results[i].push(removed)
-        this.move(removed, fromSlot, { type: SlotType.Result, index: i })
+        this.move(card, fromSlot, toSlot)
         return true
       }
     }
     return false
   }
   tryPlaceToColumns(
-    card: Card,
+    card: ICard,
     fromSlot: ISlot,
-    slotArray: ICard[],
+    slotArray: string[],
     skipIndex: boolean = false
   ): boolean {
     for (let i = 0; i < 10; i++) {
@@ -137,9 +159,10 @@ export class Game implements IGame {
       if (this.canPlaceColumn(i, card)) {
         const removed = slotArray.pop()
         if (!removed) throw Error('no card to move in ' + SlotType.PlayField + ':' + i)
-        removed.isClosed = false
+        const toSlot = { type: SlotType.PlayField, index: i }
+        card.movedTo(toSlot, this.columns[i].length)
         this.columns[i].push(removed)
-        this.move(removed, fromSlot, { type: SlotType.PlayField, index: i })
+        this.move(card, fromSlot, toSlot)
         return true
       }
     }
@@ -150,7 +173,9 @@ export class Game implements IGame {
     if (this.results[index].length === 0 && card.value == CardValue.Ace) return true
     if (this.results[index].length === 0) return false
 
-    const topCard = this.results[index][this.results[index].length - 1]
+    const topCardTitle = this.results[index][this.results[index].length - 1]
+    const topCard = this.deck.get(topCardTitle)
+    if (!topCard) throw Error('no card in deck')
     if (
       topCard.suit === card.suit &&
       topCard.value === CardValue.Ace &&
@@ -163,43 +188,110 @@ export class Game implements IGame {
 
   canPlaceColumn(index: number, card: ICard): boolean {
     if (this.columns[index].length === 0) return true
-    const topCard = this.columns[index][this.columns[index].length - 1]
+    const topCardTitle = this.columns[index][this.columns[index].length - 1]
+    const topCard = this.deck.get(topCardTitle)
+    if (!topCard) throw Error('no card in deck')
     if (topCard.suit === card.suit && topCard.value - 1 === card.value) return true
     return false
+  }
+
+  private onCardHovered(msg: ICardHoveredMessage): void {
+    if (msg.from.type === SlotType.PlayField) {
+      const isLast = !!this.columns.filter((x) => x[x.length - 1] === msg.card.title)[0]
+      if (!isLast) return
+    }
+    if (msg.from.type === SlotType.DeckClosed) {
+      this.bus.hover(null, { type: SlotType.DeckClosed }, 'pirple')
+      return
+    }
+
+    this.freeSlots = []
+    for (let i = 0; i < 8; i++) {
+      if (this.canPlaceResult(i, msg.card)) {
+        this.bus.hover(msg.card, msg.from, 'purple')
+        const topCardTitle = this.results[i][this.results[i].length - 1]
+        const slot = { type: SlotType.Result, index: i }
+        if (topCardTitle) {
+          const topCard = this.deck.get(topCardTitle)
+          if (!topCard) throw Error('fail')
+          this.bus.hover(topCard, slot)
+        } else {
+          this.freeSlots.push(slot)
+          this.bus.hover(null, slot)
+        }
+      }
+    }
+    for (let i = 0; i < 10; i++) {
+      if (msg.from.index === i) continue
+      if (this.canPlaceColumn(i, msg.card)) {
+        this.bus.hover(msg.card, msg.from, 'purple')
+        const topCardTitle = this.columns[i][this.columns[i].length - 1]
+        const slot = { type: SlotType.Result, index: i }
+        if (topCardTitle) {
+          const topCard = this.deck.get(topCardTitle)
+          if (!topCard) throw Error('fail')
+          this.bus.hover(topCard, slot)
+        } else {
+          this.freeSlots.push(slot)
+          this.bus.hover(null, slot)
+        }
+      }
+    }
+  }
+
+  private onCardDescended(): void {
+    this.bus.descent(Descent)
   }
 
   undo(): void {
     if (this.history.length === 0) return
     const lastMove = this.history.pop()
     if (!lastMove) return
-    let toMove: ICard | undefined
+    let toMove: string | undefined
     switch (lastMove.to.type) {
+      case SlotType.DeckOpened:
+        toMove = this.opened.pop()
+        break
       case SlotType.PlayField:
-        toMove = this.columns[lastMove.to.index].pop()
+        toMove = this.columns[lastMove.to.index || 0].pop()
         break
       case SlotType.Result:
-        toMove = this.results[lastMove.to.index].pop()
+        toMove = this.results[lastMove.to.index || 0].pop()
         break
     }
     if (!toMove) return
+
+    const card = this.deck.get(toMove)
+    if (!card) return
+
     switch (lastMove.from.type) {
+      case SlotType.DeckClosed:
+        card.movedTo(lastMove.from, this.closed.length)
+        this.closed.push(toMove)
+        this.bus.deckChanged(this.closed.length)
+        break
       case SlotType.DeckOpened:
+        card.movedTo(lastMove.from, this.opened.length)
         this.opened.push(toMove)
         break
       case SlotType.PlayField:
-        this.columns[lastMove.from.index].push(toMove)
+        card.movedTo(lastMove.from, this.columns[lastMove.from.index || 0].length)
+
+        this.columns[lastMove.from.index || 0].push(toMove)
         break
       case SlotType.Result:
-        this.results[lastMove.from.index].push(toMove)
+        card.movedTo(lastMove.from, this.results[lastMove.from.index || 0].length)
+        this.results[lastMove.from.index || 0].push(toMove)
         break
     }
-    this.move(lastMove.card, lastMove.to, lastMove.from, false)
+    this.move(card, lastMove.to, lastMove.from, false)
   }
 
   move(card: ICard, fromSlot: ISlot, toSlot: ISlot, saveHistory: boolean = true) {
     this.moves++
     if (saveHistory) this.history.push({ card, from: fromSlot, to: toSlot })
     this.bus.move(card, fromSlot, toSlot)
+    this.bus.cardChanged(card)
 
     let totalResults = 0
     for (const i in this.results) totalResults += this.results[i].length
@@ -211,14 +303,17 @@ export interface IGame {
   onLoaded(): void
   getTopCard(): ICard | null
 
-  onCardClicked(card: ICard, slot: ISlot): void
+  onCardClicked(card: ICard): void
   undo(): void
 
   time: number
-  closed: ICard[]
-  opened: ICard[]
-  columns: ICard[][]
-  results: ICard[][]
+  closed: string[]
+  opened: string[]
+  columns: string[][]
+  results: string[][]
+  freeSlots: ISlot[]
+
+  deck: Map<string, ICard>
 }
 
 export default function (bus: IBus): IGame {

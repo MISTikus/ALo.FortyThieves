@@ -1,63 +1,89 @@
 <script setup lang="ts">
 import { computed, inject, ref, onMounted, reactive } from 'vue'
-import type { IBus } from '@/services/bus'
+import { Descended, type IBus, type ICardChangedMessage, type ICardHoverMessage, type IMoveMessage } from '@/services/bus'
 import { CardSuit, CardValue } from '@/models/Card'
 import { SlotType, type ISlot } from '@/models/Slot'
 import type ICard from '@/models/Card';
+import type { IGame } from '@/services/game';
 
+const game = inject<IGame>('game')
 const bus = inject<IBus>('bus')
+if (!game) throw Error('Game service is not provided')
 if (!bus) throw Error('Bus service is not provided')
 
 const props = defineProps<{
     card: ICard
-    index: number
     style?: string,
-    cardSlot: ISlot,
-    topAdd: number,
-    leftAdd: number
 }>()
+const data = reactive({
+    card: ref(props.card),
+    id: ref(0),
+})
+
 const emit = defineEmits<{
     (e: 'card-clicked', card: ICard): void
 }>()
 const id = ref<HTMLDivElement>()
-const cardId = `card-${props.card.title}`
 
 const classes = computed(() => {
     var result = "card card-suit"
-    result += " card-suit-" + CardSuit[props.card.suit].toLowerCase();;
-    result += " card-value-" + CardValue[props.card.value].toLowerCase();
+    result += " card-suit-" + CardSuit[props.card.suit].toLowerCase()
+    result += " card-value-" + CardValue[props.card.value].toLowerCase()
+    result += isActive.value ? " card-active" : ""
     return result
 })
 const cardStyle = ref('')
 
 const style = computed(() => (props.style || "") + cardStyle.value)
+const isActive = computed(() => data.card.canInteract)
 
 onMounted(() => {
-    const parent = id.value?.parentElement
-    const parentPosition = parent?.getBoundingClientRect()
-    cardStyle.value = `top: ${parentPosition!.top + props.topAdd}px; left: ${parentPosition!.left + props.leftAdd}px;`
+    bus.moves().subscribe(onMove)
+    bus.onCardChanged().subscribe(onCardChanged)
+    bus.onHover().subscribe(onHover)
+    bus.onDescent().subscribe(onDescent)
 })
 
-function hover() {
-    if (props.cardSlot.type === SlotType.DeckClosed) return
-    if (props.cardSlot.type === SlotType.Result) return
-    bus!.cardHovered(props.card, props.cardSlot)
+function onMove(msg: IMoveMessage): void {
+    if (msg.card.title !== props.card.title) return
+    data.card = msg.card
+    data.id++
 }
-function leave() {
-    bus!.cardDescended(true)
+
+function onCardChanged(msg: ICardChangedMessage): void {
+    if (msg.card.title !== props.card.title) return
+    data.card = msg.card
+    data.id++
+}
+
+function onHover(msg: ICardHoverMessage) {
+    if (msg.card === null || msg.card.title !== props.card.title) return
+    cardStyle.value = `border:2px solid ${msg.color}`
+}
+
+function onDescent() {
+    cardStyle.value = ''
+}
+
+function hovered() {
+    bus!.cardHovered(data.card, data.card.slot)
+}
+function leaved() {
+    bus!.cardDescended(Descended)
 }
 
 function onCardClicked() {
-    emit('card-clicked', props.card)
+    emit('card-clicked', data.card)
 }
 </script>
 
 <template>
-    <div @click="onCardClicked" ref="id">
-        <div v-if="props.card.isClosed" class="card back back-dark-modern" @mouseover="hover()" @mouseleave="leave()"
+    <div @click="onCardClicked" ref="id" :id="`card-${data.card.title}`" :debug="data.card.debugData" :updater="data.id"
+        class="card">
+        <div v-if="data.card.isClosed" class="card back back-dark-modern" @mouseover="hovered()" @mouseleave="leaved()"
             :style="props.style"></div>
-        <div :id="cardId" v-if="!props.card.isClosed" :class="classes" :style="style" @mouseover="hover()"
-            @mouseleave="leave()">
+        <div v-if="data.card.isClosed === false" :class="classes" :style="style" @mouseover="hovered()"
+            @mouseleave="leaved()">
         </div>
     </div>
 </template>
@@ -65,87 +91,97 @@ function onCardClicked() {
 <style scoped>
 .card {
     position: absolute;
-    border: 2px solid gray;
+    width: var(--card-width);
+    height: var(--card-height);
+    border-radius: 8px;
+    transition:
+        top 0.2s ease,
+        left 0.2s ease;
+}
+
+.card-active:hover {
+    border: 2px solid purple !important;
     border-radius: 8px;
 }
 
-.card-suit {
+.card .card-suit {
     background-repeat: no-repeat;
     background-size: 1760px 200px;
     background-position-y: -10px;
+    border: 2px solid gray;
 }
 
-.card-suit-hearts {
+.card .card-suit-hearts {
     background-image: url('../../assets/svg/dark/hearts.svg');
 }
 
-.card-suit-diamonds {
+.card .card-suit-diamonds {
     background-image: url('../../assets/svg/dark/diamonds.svg');
 }
 
-.card-suit-clubs {
+.card .card-suit-clubs {
     background-image: url('../../assets/svg/dark/clubs.svg');
 }
 
-.card-suit-spades {
+.card .card-suit-spades {
     background-image: url('../../assets/svg/dark/spades.svg');
 }
 
-.card-value-ace {
+.card .card-value-ace {
     background-position-x: -1px;
 }
 
-.card-value-two {
+.card .card-value-two {
     background-position-x: -137px;
 }
 
-.card-value-three {
+.card .card-value-three {
     background-position-x: -273px;
 }
 
-.card-value-four {
+.card .card-value-four {
     background-position-x: -409px;
 }
 
-.card-value-five {
+.card .card-value-five {
     background-position-x: -545px;
 }
 
-.card-value-six {
+.card .card-value-six {
     background-position-x: -681px;
 }
 
-.card-value-seven {
+.card .card-value-seven {
     background-position-x: -817px;
 }
 
-.card-value-eight {
+.card .card-value-eight {
     background-position-x: -953px;
 }
 
-.card-value-nine {
+.card .card-value-nine {
     background-position-x: -1089px;
 }
 
-.card-value-ten {
+.card .card-value-ten {
     background-position-x: -1225px;
 }
 
-.card-value-jack {
+.card .card-value-jack {
     background-position-x: -1361px;
 }
 
-.card-value-queen {
+.card .card-value-queen {
     background-position-x: -1497px;
 }
 
-.card-value-king {
+.card .card-value-king {
     background-position-x: -1633px;
 }
 
-.back {
+.card .back {
     background-image: url('../../assets/svg/card-back.svg');
-    background-size: 611px 432px;
+    background-size: 584px 428px;
     background-repeat: no-repeat;
 }
 
@@ -158,7 +194,7 @@ function onCardClicked() {
 }
 
 .back-dark-modern {
-    background-position: -243px -28px;
+    background-position: -227px -29px;
 }
 
 .back-dark-complecated {

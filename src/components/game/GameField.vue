@@ -1,19 +1,38 @@
 <script setup lang="ts">
 import { inject, onMounted, reactive, ref } from 'vue'
-import PlayField from '@/components/game/PlayField.vue'
-import ResultsContainer from '@/components/game/ResultsContainer.vue'
-import DeckContainer from '@/components/game/DeckContainer.vue'
+import { SlotType } from '@/models/Slot';
+import CardItem from '@/components/game/CardItem.vue'
+import CardSlot from '@/components/game/CardSlot.vue'
+import type { IBus, ICardHoverMessage, IFinishMessage, IMoveMessage } from '@/services/bus'
 import type { IGame } from '@/services/game'
-import type { IBus, IFinishMessage } from '@/services/bus'
+import type ICard from '@/models/Card';
 
 const game = inject<IGame>('game')
 const bus = inject<IBus>('bus')
 if (!game) throw Error('Game service is not provided')
 if (!bus) throw Error('Bus service is not provided')
 
+const closed = ref<HTMLDivElement>()
+const opened = ref<HTMLDivElement>()
+const startedClass = ref('')
+const resultStyles = ref<string[]>([])
+const columnStyles = ref<string[]>([])
+const closedStyle = ref('')
+const openedStyle = ref('')
+
 onMounted(() => {
-    game.onLoaded()
     bus.finished().subscribe(onFinish)
+    bus.moves().subscribe(onCardMove)
+    bus.onHover().subscribe(onHover)
+    bus.onDescent().subscribe(onDescent)
+
+    setTimeout(() => {
+        game.deck.forEach((card, title) => {
+            onCardMove({ card, from: { type: SlotType.DeckClosed }, to: { type: SlotType.DeckClosed } })
+        })
+        startedClass.value = "started"
+        game.onLoaded()
+    }, 1000);
 
     document.body.oncontextmenu = e => {
         if (e.button !== 2) return;
@@ -28,7 +47,56 @@ const data = reactive({
     showModal: ref(false)
 })
 
-function onFinish(msg: IFinishMessage) {
+function onCardMove(msg: IMoveMessage): void {
+    const cardItem = document.getElementById(`card-${msg.card.title}`)
+    if (!cardItem) throw Error(`card not found: ${msg.card.title}`)
+    const fromSlot = document.getElementById(`slot-${SlotType[msg.from.type]}-${(msg.from.index ?? -1) + 1}`)
+    const toSlot = document.getElementById(`slot-${SlotType[msg.to.type]}-${(msg.to.index ?? -1) + 1}`)
+    const toRect = toSlot?.getBoundingClientRect()
+    let top = (toRect?.top || 0) - 40;
+
+    if (msg.to.type === SlotType.PlayField) {
+        const toAdd = msg.card.index ?? 0 > 0 ? (msg.card.index ?? 0) * 30 : 0
+        top += toAdd
+    }
+
+    cardItem.style.zIndex = msg.card.index!.toString()
+    cardItem.style.top = `${top}px`
+    cardItem.style.left = `${toRect?.left || 0}px`
+}
+
+function onHover(msg: ICardHoverMessage): void {
+    if (msg.card) return
+    resultStyles.value = Array(8).map(() => "")
+    columnStyles.value = Array(10).map(() => "")
+    if (msg.from.type === SlotType.DeckClosed) {
+        closedStyle.value = `border:2px solid ${msg.color}`
+        return
+    }
+    // else if (msg.from.type === SlotType.DeckOpened) {
+    //     openedStyle.value = `border:2px solid ${msg.color}`
+    //     return
+    // }
+    game?.freeSlots.forEach(slot => {
+        if (slot.type === SlotType.Result)
+            resultStyles.value[slot.index!] = `border:2px solid ${msg.color}`
+        else if (slot.type === SlotType.PlayField)
+            columnStyles.value[slot.index!] = `border:2px solid ${msg.color}`
+    });
+}
+
+function onDescent(): void {
+    resultStyles.value = Array(8).map(() => "")
+    columnStyles.value = Array(8).map(() => "")
+    openedStyle.value = ''
+    closedStyle.value = ''
+}
+
+function onCardClicked(card: ICard) {
+    game?.onCardClicked(card)
+}
+
+function onFinish(msg: IFinishMessage): void {
     data.time = toTime(msg.time)
     data.moves = msg.moves
     data.showModal = true
@@ -52,13 +120,28 @@ function toTime(time: number): string {
             </div>
         </div>
         <div class="deck-row">
-            <ResultsContainer :cards="game!.results" />
-            <DeckContainer :opened="game!.opened" :closed="game!.closed" />
+            <div class="results">
+                <CardSlot :id="`slot-${SlotType[SlotType.Result]}-${index}`" v-for="index in 8" :key="index"
+                    :style="resultStyles[index - 1]" :type="SlotType.Result" :index="index" />
+            </div>
+            <div class="deck">
+                <CardSlot ref="closed" :id="`slot-${SlotType[SlotType.DeckClosed]}-0`" :type="SlotType.DeckClosed"
+                    :style="closedStyle" />
+                <CardSlot ref="opened" :id="`slot-${SlotType[SlotType.DeckOpened]}-0`" :type="SlotType.DeckOpened"
+                    :style="openedStyle" />
+            </div>
         </div>
-        <PlayField :cards="game!.columns" />
-        <!-- <div class="card-holder">
-            <CardItem v-for="card in game.deck" :key="card.title" />
-        </div> -->
+        <div class="columns">
+            <div v-for="index in 10" :key="index">
+                <CardSlot :id="`slot-${SlotType[SlotType.PlayField]}-${index}`" :type="SlotType.PlayField"
+                    :style="columnStyles[index - 1]" :index="index" />
+            </div>
+        </div>
+
+        <div :class="`card-holder ${startedClass}`">
+            <CardItem v-for="entry in game!.deck.entries()" :key="entry[1].title" :card="entry[1]"
+                @card-clicked="onCardClicked" />
+        </div>
     </div>
 </template>
 
@@ -84,6 +167,23 @@ function toTime(time: number): string {
     background-color: var(--vt-c-black-mute);
 }
 
+.results {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: calc(var(--default-gap) / 4);
+}
+
+.deck {
+    display: flex;
+    flex-direction: row;
+    gap: calc(var(--default-gap) / 4);
+}
+
+.columns {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+}
+
 .finish-modal {
     position: absolute;
     width: 24rem;
@@ -101,5 +201,13 @@ function toTime(time: number): string {
 .panel {
     margin: 0 auto;
     width: fit-content;
+}
+
+.card-holder {
+    visibility: hidden;
+}
+
+.card-holder.started {
+    visibility: inherit;
 }
 </style>

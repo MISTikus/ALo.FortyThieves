@@ -1,21 +1,43 @@
+import { SlotType, type ISlot } from './Slot'
+
 export default interface ICard {
   isClosed: boolean
+  readonly canInteract: boolean
   value: CardValue
   suit: CardSuit
   title: string
+  slot: ISlot
+  index?: number
+  debugData?: string
+
+  movedTo(slot: ISlot, index: number): void
 }
 
 export class Card implements ICard {
-  isClosed: boolean
   value: CardValue
   suit: CardSuit
   title: string
+  slot: ISlot
+  index?: number = 0
+  debugData?: string
 
-  constructor(value: CardValue, suit: CardSuit, isClosed: boolean = true) {
+  constructor(value: CardValue, suit: CardSuit, slot: ISlot) {
     this.value = value
     this.suit = suit
-    this.isClosed = isClosed
+    this.slot = slot
     this.title = CardValue[this.value] + ':' + CardSuit[this.suit]
+  }
+
+  get isClosed(): boolean {
+    return this.slot.type === SlotType.DeckClosed
+  }
+  get canInteract(): boolean {
+    return this.slot.type !== SlotType.DeckClosed && this.slot.type === SlotType.Result
+  }
+
+  movedTo(slot: ISlot, index: number): void {
+    this.slot = slot
+    this.index = index
   }
 }
 
