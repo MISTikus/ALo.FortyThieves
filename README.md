@@ -1,6 +1,22 @@
-# alo.thieves
+# ALo.Thieves
 
-This template should help get you started developing with Vue 3 in Vite.
+Forty thieves solitaire card game.
+
+---
+
+## Bugs:
+
+- cannot move to card if last card on slot and free slot available
+- cannot move from results to playfield
+
+---
+
+## ToDo:
+
+- light theme
+- move two cards to free slot (FF)
+
+---
 
 ## Recommended IDE Setup
 
