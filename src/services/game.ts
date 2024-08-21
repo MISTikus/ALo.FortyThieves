@@ -223,30 +223,31 @@ export class Game implements IGame {
       if (!isLast) return
     }
     if (msg.from.type === SlotType.DeckClosed) {
-      this.bus.hover(null, { type: SlotType.DeckClosed }, 'var(--border-hover)')
+      this.bus.hover(null, { type: SlotType.DeckClosed }, 'var(--color-border-hover)')
       return
     }
 
     this.freeSlots = []
-    for (let i = 0; i < 8; i++) {
-      if (this.canPlaceResult(i, msg.card)) {
-        this.bus.hover(msg.card, msg.from, 'var(--border-hover)')
-        const topCardTitle = this.results[i][this.results[i].length - 1]
-        const slot = { type: SlotType.Result, index: i }
-        if (topCardTitle) {
-          const topCard = this.deck.get(topCardTitle)
-          if (!topCard) throw Error('fail')
-          this.bus.hover(topCard, slot)
-        } else {
-          this.freeSlots.push(slot)
-          this.bus.hover(null, slot)
+    if (msg.from.type !== SlotType.Result)
+      for (let i = 0; i < 8; i++) {
+        if (this.canPlaceResult(i, msg.card)) {
+          this.bus.hover(msg.card, msg.from, 'var(--color-border-hover)')
+          const topCardTitle = this.results[i][this.results[i].length - 1]
+          const slot = { type: SlotType.Result, index: i }
+          if (topCardTitle) {
+            const topCard = this.deck.get(topCardTitle)
+            if (!topCard) throw Error('fail')
+            this.bus.hover(topCard, slot)
+          } else {
+            this.freeSlots.push(slot)
+            this.bus.hover(null, slot)
+          }
         }
       }
-    }
     for (let i = 0; i < 10; i++) {
       if (msg.from.index === i) continue
       if (this.canPlaceColumn(i, msg.card)) {
-        this.bus.hover(msg.card, msg.from, 'purple')
+        this.bus.hover(msg.card, msg.from, 'var(--color-border-hover)')
         const topCardTitle = this.columns[i][this.columns[i].length - 1]
         const slot = { type: SlotType.Result, index: i }
         if (topCardTitle) {
