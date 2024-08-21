@@ -1,6 +1,6 @@
 export default function (): ISettings {
   return {
-    randomize: false,
+    randomize: true,
     useHelper: true
   }
 }

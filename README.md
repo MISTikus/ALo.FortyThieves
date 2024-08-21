@@ -8,7 +8,7 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 
 ## Bugs:
 
-- cannot move to card if last card on slot and free slot available
+- ~~cannot move to card if last card on slot and free slot available~~
 - ~~cannot move from results to playfield~~
 
 ---
