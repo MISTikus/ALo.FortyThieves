@@ -10,7 +10,8 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 
 - ~~cannot move to card if last card on slot and free slot available~~
 - ~~cannot move from results to playfield~~
-- remove deck highlight
+- ~~remove deck highlight~~
+- ~~disable hepler behavior~~
 
 ---
 
@@ -20,7 +21,9 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 - move two cards to free slot (FF)
 - ~~settings / feature flags~~
 - settings UI
-- disable hepler behavior
+- ~~automate results click (FF)~~
+- ~~about page~~
+- save game
 
 ---
 

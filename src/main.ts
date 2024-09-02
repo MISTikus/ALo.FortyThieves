@@ -4,16 +4,22 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import createBus from '@/services/bus'
-import createGame from '@/services/game'
+import createStorage from '@/services/storage'
 import createSettings from '@/services/settings'
 
 const app = createApp(App)
-const settings = createSettings()
 const bus = createBus()
-const game = createGame(bus, settings)
+const storage = createStorage()
+const storageData = storage.read()
+if (!storageData) {
+  storage.write({
+    settings: createSettings(),
+    record: null,
+    savedGame: null
+  })
+}
 
 app.use(router)
 app.provide('bus', bus)
-app.provide('game', game)
-app.provide('settings', settings)
+app.provide('storage', storage)
 app.mount('#app')

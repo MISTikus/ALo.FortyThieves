@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import { inject, onMounted, reactive, ref } from 'vue'
+import { inject, provide, defineProps, onMounted, reactive, ref } from 'vue'
 import { SlotType } from '@/models/Slot';
 import CardItem from '@/components/game/CardItem.vue'
 import CardSlot from '@/components/game/CardSlot.vue'
 import type { IBus, ICardHoverMessage, IFinishMessage, IMoveMessage } from '@/services/bus'
 import type { IGame } from '@/services/game'
 import type ICard from '@/models/Card';
+import type { IStorage } from '@/services/storage';
 
-const game = inject<IGame>('game')
+const props = defineProps<{
+    game: IGame
+}>()
+
 const bus = inject<IBus>('bus')
-if (!game) throw Error('Game service is not provided')
+const storage = inject<IStorage>('storage')
+
+if (!props.game) throw Error('Game service is not provided')
 if (!bus) throw Error('Bus service is not provided')
+if (!storage) throw Error('Bus service is not provided')
+
+const best = storage.read()?.record
+
+provide('bus', bus)
+provide('game', props.game)
 
 const closed = ref<HTMLDivElement>()
 const opened = ref<HTMLDivElement>()
@@ -27,17 +39,17 @@ onMounted(() => {
     bus.onDescent().subscribe(onDescent)
 
     setTimeout(() => {
-        game.deck.forEach((card, title) => {
+        props.game.deck.forEach((card) => {
             onCardMove({ card, from: { type: SlotType.DeckClosed }, to: { type: SlotType.DeckClosed } })
         })
         startedClass.value = "started"
-        game.onLoaded()
+        props.game.onLoaded()
     }, 1000);
 
     document.body.oncontextmenu = e => {
         if (e.button !== 2) return;
         e.preventDefault()
-        game.undo()
+        props.game.undo()
     }
 })
 
@@ -50,7 +62,6 @@ const data = reactive({
 function onCardMove(msg: IMoveMessage): void {
     const cardItem = document.getElementById(`card-${msg.card.title}`)
     if (!cardItem) throw Error(`card not found: ${msg.card.title}`)
-    const fromSlot = document.getElementById(`slot-${SlotType[msg.from.type]}-${(msg.from.index ?? -1) + 1}`)
     const toSlot = document.getElementById(`slot-${SlotType[msg.to.type]}-${(msg.to.index ?? -1) + 1}`)
     const toRect = toSlot?.getBoundingClientRect()
     let top = (toRect?.top || 0) - 40;
@@ -70,14 +81,9 @@ function onHover(msg: ICardHoverMessage): void {
     resultStyles.value = Array(8).map(() => "")
     columnStyles.value = Array(10).map(() => "")
     if (msg.from.type === SlotType.DeckClosed) {
-        closedStyle.value = `border:2px solid ${msg.color}`
         return
     }
-    // else if (msg.from.type === SlotType.DeckOpened) {
-    //     openedStyle.value = `border:2px solid ${msg.color}`
-    //     return
-    // }
-    game?.freeSlots.forEach(slot => {
+    props.game?.freeSlots.forEach(slot => {
         if (slot.type === SlotType.Result)
             resultStyles.value[slot.index!] = `border:2px solid ${msg.color}`
         else if (slot.type === SlotType.PlayField)
@@ -93,13 +99,20 @@ function onDescent(): void {
 }
 
 function onCardClicked(card: ICard) {
-    game?.onCardClicked(card)
+    props.game?.onCardClicked(card)
 }
 
 function onFinish(msg: IFinishMessage): void {
     data.time = toTime(msg.time)
     data.moves = msg.moves
     data.showModal = true
+
+    if (!best || (msg.time < best.time || msg.moves < best.moves)) {
+        const storageData = storage!.read()
+        if (!storageData) throw Error('No storage data available')
+        storageData.record = { time: msg.time, moves: msg.moves }
+        storage?.write(storageData)
+    }
 }
 
 function toTime(time: number): string {
@@ -115,8 +128,8 @@ function toTime(time: number): string {
             <div class="panel">
                 <p>You win!</p>
                 <p>Congratulations!</p>
-                <p>Time: {{ data.time }}</p>
-                <p>Moves: {{ data.moves }}</p>
+                <p><span>Time: {{ data.time }}</span> <span v-if="best">Best: {{ toTime(best.time) }}</span></p>
+                <p><span>Moves: {{ data.moves }}</span> <span v-if="best">Best: {{ best.moves }}</span></p>
             </div>
         </div>
         <div class="deck-row">
@@ -139,7 +152,7 @@ function toTime(time: number): string {
         </div>
 
         <div :class="`card-holder ${startedClass}`">
-            <CardItem v-for="entry in game!.deck.entries()" :key="entry[1].title" :card="entry[1]"
+            <CardItem v-for="entry in props.game!.deck.entries()" :key="entry[1].title" :card="entry[1]"
                 @card-clicked="onCardClicked" />
         </div>
     </div>

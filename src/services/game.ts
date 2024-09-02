@@ -3,7 +3,7 @@ import type { ISlot } from '@/models/Slot'
 import { SlotType } from '@/models/Slot'
 import type ICard from '@/models/Card'
 import { Descent, type IBus, type ICardHoveredMessage, type IMoveMessage } from './bus'
-import type { ISettings } from './settings'
+import type { IStorageData } from './storage'
 
 const total: number = 13 * 4 * 2
 const defaultDeck: CardValue[] = [
@@ -36,7 +36,7 @@ export class Game implements IGame {
 
   constructor(
     private bus: IBus,
-    private settings: ISettings
+    private storageData: IStorageData
   ) {
     for (let i = 0; i < 10; i++) this.columns.push([])
     for (let i = 0; i < 8; i++) this.results.push([])
@@ -53,15 +53,16 @@ export class Game implements IGame {
       this.closed.push(card.title)
     }
 
-    if (settings.randomize) {
+    if (storageData.settings.randomize) {
       const seed: number = Number.parseInt(Math.random().toString()[5])
       for (const i in [...Array(seed || 1).keys()]) {
-        this.closed = this.closed.sort(() => Math.random() - 0.5)
+        this.closed = this.closed.sort(() => Math.random() - 0.5 + +i * 0.1)
       }
     }
 
     bus.onCardHover().subscribe((m) => this.onCardHovered(m))
     bus.onCardDescended().subscribe(() => this.onCardDescended())
+    bus.onGameTimeChanged().subscribe((t) => this.onTimeChanged(t))
   }
 
   private spawn() {
@@ -94,6 +95,10 @@ export class Game implements IGame {
 
   onLoaded() {
     this.spawn()
+  }
+
+  onTimeChanged(time: number) {
+    this.time = time
   }
 
   onCardClicked(card: ICard): void {
@@ -150,6 +155,14 @@ export class Game implements IGame {
         card.movedTo(toSlot, this.results[i].length)
         this.results[i].push(removed)
         this.move(card, fromSlot, toSlot)
+
+        if (!this.storageData.settings.automateResults) return true
+
+        setTimeout(() => {
+          const next = this.getNextResultToPut()
+          if (!next) return true
+          this.tryPlaceToResults(next.card, next.fromSlot, next.slotArray)
+        }, 300)
         return true
       }
     }
@@ -217,7 +230,25 @@ export class Game implements IGame {
     return false
   }
 
+  getNextResultToPut(): { card: ICard; fromSlot: ISlot; slotArray: string[] } | null {
+    for (let c = 0; c < 10; c++) {
+      const slotArray = this.columns[c]
+      if (slotArray.length === 0) continue
+      const topCardTitle = slotArray[slotArray.length - 1]
+      const topCard = this.deck.get(topCardTitle)
+      if (!topCard) return null
+
+      for (let r = 0; r < 8; r++) {
+        if (this.canPlaceResult(r, topCard)) {
+          return { card: topCard, fromSlot: topCard.slot, slotArray }
+        }
+      }
+    }
+    return null
+  }
+
   private onCardHovered(msg: ICardHoveredMessage): void {
+    if (!this.storageData.settings.useHelper) return
     if (msg.from.type === SlotType.PlayField) {
       const isLast = !!this.columns.filter((x) => x[x.length - 1] === msg.card.title)[0]
       if (!isLast) return
@@ -339,6 +370,6 @@ export interface IGame {
   deck: Map<string, ICard>
 }
 
-export default function (bus: IBus, settings: ISettings): IGame {
-  return new Game(bus, settings)
+export default function (bus: IBus, storageData: IStorageData): IGame {
+  return new Game(bus, storageData)
 }

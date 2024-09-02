@@ -2,7 +2,6 @@
 import { computed, inject, ref, onMounted, reactive } from 'vue'
 import { Descended, type IBus, type ICardChangedMessage, type ICardHoverMessage, type IMoveMessage } from '@/services/bus'
 import { CardSuit, CardValue } from '@/models/Card'
-import { SlotType, type ISlot } from '@/models/Slot'
 import type ICard from '@/models/Card';
 import type { IGame } from '@/services/game';
 

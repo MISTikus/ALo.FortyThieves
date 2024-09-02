@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, reactive, inject } from 'vue';
+import { defineProps, onMounted, reactive, inject } from 'vue';
 import type { IBus } from '@/services/bus';
-import type { IGame } from '@/services/game';
+import RoutesBar from '@/components/RoutesBar.vue';
 
-const game = inject<IGame>('game')
 const bus = inject<IBus>('bus')
-if (!game) throw Error('Game service is not provided')
-if (!bus) throw Error('Bus service is not provided')
+if (!bus) throw Error('Bus is not provided')
+
+const props = defineProps<{ timerEnabled: boolean }>()
 
 let data = reactive({ time: 0, cardsLeft: 0 });
 
@@ -14,13 +14,27 @@ onMounted(() => {
     bus.deckStatus().subscribe(msg => {
         data.cardsLeft = msg.cardsLeft
     });
+    bus.onGameStarted().subscribe(() => {
+        data.time = 0;
+        data.cardsLeft = 0;
+        if (props.timerEnabled && data.time === 0) {
+            addTimer()
+        }
+    });
 
-    addTimer()
+    if (props.timerEnabled) {
+        addTimer()
+    }
 })
 
 function addTimer() {
+    if (!props.timerEnabled) {
+        data.time = 0;
+        data.cardsLeft = 0;
+        return
+    }
     data.time++;
-    game!.time++;
+    bus?.gameTimeChanged(data.time);
     setTimeout(() => {
         addTimer()
     }, 1000);
@@ -34,6 +48,18 @@ function toTime(time: number): string {
 </script>
 
 <template>
-    <div>Time: {{ toTime(data.time) }}</div>
-    <div>Left: {{ data.cardsLeft }}</div>
+    <RoutesBar />
+    <div class="card-width tac">Time: {{ toTime(data.time) }}</div>
+    <div class="card-width tac">Left: {{ data.cardsLeft }}</div>
 </template>
+
+<style scoped>
+.card-width {
+    max-width: var(--card-width);
+    width: var(--card-width);
+}
+
+.tac {
+    text-align: center;
+}
+</style>

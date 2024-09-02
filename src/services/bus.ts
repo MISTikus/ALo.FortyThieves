@@ -4,6 +4,8 @@ import { Observable, Subject } from 'rxjs'
 
 export class Bus implements IBus {
   constructor(
+    private gameSubject = new Subject<void>(),
+    private gameTimeSubject = new Subject<number>(),
     private moveSubject = new Subject<IMoveMessage>(),
     private deckSubject = new Subject<IDeckStateMessage>(),
     private cardHoveredSubject = new Subject<ICardHoveredMessage>(),
@@ -13,6 +15,18 @@ export class Bus implements IBus {
     private cardChangedSubject = new Subject<ICardChangedMessage>(),
     private finishSubject = new Subject<IFinishMessage>()
   ) {}
+  gameTimeChanged(time: number): void {
+    this.gameTimeSubject.next(time)
+  }
+  onGameTimeChanged(): Observable<number> {
+    return this.gameTimeSubject.asObservable()
+  }
+  gameStarted(): void {
+    this.gameSubject.next()
+  }
+  onGameStarted(): Observable<void> {
+    return this.gameSubject.asObservable()
+  }
 
   move(card: ICard, from: ISlot, to: ISlot): void {
     this.moveSubject.next({ card, from, to })
@@ -77,6 +91,12 @@ export const Descended = Symbol('Descended')
 export const Descent = Symbol('Descent')
 
 export interface IBus {
+  gameStarted(): void
+  onGameStarted(): Observable<void>
+
+  gameTimeChanged(time: number): void
+  onGameTimeChanged(): Observable<number>
+
   move(card: ICard, from: ISlot, to: ISlot): void
   moves(): Observable<IMoveMessage>
 

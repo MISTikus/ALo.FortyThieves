@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
 import StatusBar from '@/components/StatusBar.vue'
+import router from '@/router'
 </script>
 
 <template>
   <header>
-    <StatusBar />
+    <StatusBar :timerEnabled="router.currentRoute.value.name === 'game'" />
   </header>
   <div class="content">
     <RouterView />
@@ -17,9 +18,11 @@ header {
   display: flex;
   flex-direction: row;
   justify-content: end;
-  gap: var(--default-gap);
+  align-items: center;
+  gap: calc(var(--default-gap) / 4);
   width: 100%;
-  padding: var(--default-padding);
+  height: 40px;
+  padding: 0 var(--default-padding);
   background-color: #cbcbfb99;
 }
 </style>

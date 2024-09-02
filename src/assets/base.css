@@ -75,6 +75,46 @@
   }
 }
 
+:root.dark {
+  --color-background: var(--vt-c-black);
+  --color-background-soft: var(--vt-c-black-soft);
+  --color-background-mute: var(--vt-c-black-mute);
+
+  --color-border: var(--vt-c-divider-dark-2);
+  --color-border-hover: var(--vt-c-purple);
+  --color-border-highlight: var(--vt-c-green);
+
+  --color-heading: var(--vt-c-text-dark-1);
+  --color-text: var(--vt-c-text-dark-2);
+
+  --url-hearts: url('./svg/dark/hearts.svg');
+  --url-diamonds: url('./svg/dark/diamonds.svg');
+  --url-clubs: url('./svg/dark/clubs.svg');
+  --url-spades: url('./svg/dark/spades.svg');
+
+  --card-back-position: -285px -40px;
+}
+
+:root.light {
+  --color-background: var(--vt-c-white);
+  --color-background-soft: var(--vt-c-white-soft);
+  --color-background-mute: var(--vt-c-white-mute);
+
+  --color-border: var(--vt-c-divider-light-2);
+  --color-border-hover: var(--vt-c-divider-light-1);
+  --color-border-highlight: var(--vt-c-indigo);
+
+  --color-heading: var(--vt-c-text-light-1);
+  --color-text: var(--vt-c-text-light-1);
+
+  --url-hearts: url('./svg/light/hearts.svg');
+  --url-diamonds: url('./svg/light/diamonds.svg');
+  --url-clubs: url('./svg/light/clubs.svg');
+  --url-spades: url('./svg/light/spades.svg');
+
+  --card-back-position: -128px -32px;
+}
+
 *,
 *::before,
 *::after {
