@@ -12,6 +12,8 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 - ~~cannot move from results to playfield~~
 - ~~remove deck highlight~~
 - ~~disable hepler behavior~~
+- fix cards positions on window resize
+- ~~clear subscriptions on new game start~~
 
 ---
 

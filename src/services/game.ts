@@ -4,6 +4,7 @@ import { SlotType } from '@/models/Slot'
 import type ICard from '@/models/Card'
 import { Descent, type IBus, type ICardHoveredMessage, type IMoveMessage } from './bus'
 import type { IStorageData } from './storage'
+import type { Subscription } from 'rxjs'
 
 const total: number = 13 * 4 * 2
 const defaultDeck: CardValue[] = [
@@ -34,6 +35,8 @@ export class Game implements IGame {
   time: number = 0
   moves: number = 0
 
+  private subscriptions: Subscription[] = []
+
   constructor(
     private bus: IBus,
     private storageData: IStorageData
@@ -60,9 +63,9 @@ export class Game implements IGame {
       }
     }
 
-    bus.onCardHover().subscribe((m) => this.onCardHovered(m))
-    bus.onCardDescended().subscribe(() => this.onCardDescended())
-    bus.onGameTimeChanged().subscribe((t) => this.onTimeChanged(t))
+    this.subscriptions.push(bus.onCardHover().subscribe((m) => this.onCardHovered(m)))
+    this.subscriptions.push(bus.onCardDescended().subscribe(() => this.onCardDescended()))
+    this.subscriptions.push(bus.onGameTimeChanged().subscribe((t) => this.onTimeChanged(t)))
   }
 
   private spawn() {
@@ -91,6 +94,12 @@ export class Game implements IGame {
     if (card === undefined) return null
     this.bus.deckChanged(this.closed.length)
     return this.deck.get(card) || null
+  }
+
+  onStop() {
+    for (const s of this.subscriptions) {
+      s.unsubscribe()
+    }
   }
 
   onLoaded() {
@@ -359,6 +368,8 @@ export interface IGame {
 
   onCardClicked(card: ICard): void
   undo(): void
+
+  onStop(): void
 
   time: number
   closed: string[]

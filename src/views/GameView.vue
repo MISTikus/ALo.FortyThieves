@@ -3,7 +3,7 @@ import GameField from '@/components/game/GameField.vue'
 import type { IBus } from '@/services/bus';
 import createGame from '@/services/game'
 import type { IStorage } from '@/services/storage';
-import { inject } from 'vue';
+import { inject, onBeforeUnmount } from 'vue';
 
 const bus = inject<IBus>('bus')
 const storage = inject<IStorage>('storage')
@@ -14,6 +14,11 @@ bus.gameStarted()
 const data = storage.read()
 if (!data) throw Error('No storage data available')
 const game = createGame(bus, data)
+
+onBeforeUnmount(() => {
+  game.onStop()
+  //storage.write(game.state)
+})
 </script>
 
 <template>

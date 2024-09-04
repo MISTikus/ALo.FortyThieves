@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, inject, ref, onMounted, reactive } from 'vue'
+import { computed, inject, ref, onMounted, onBeforeUnmount, reactive } from 'vue'
 import { Descended, type IBus, type ICardChangedMessage, type ICardHoverMessage, type IMoveMessage } from '@/services/bus'
 import { CardSuit, CardValue } from '@/models/Card'
 import type ICard from '@/models/Card';
 import type { IGame } from '@/services/game';
+import type { Subscription } from 'rxjs';
 
 const game = inject<IGame>('game')
 const bus = inject<IBus>('bus')
@@ -36,11 +37,18 @@ const cardStyle = ref('')
 const style = computed(() => (props.style || "") + cardStyle.value)
 const isActive = computed(() => data.card.canInteract)
 
+const subscriptions: Subscription[] = []
+
 onMounted(() => {
-    bus.moves().subscribe(onMove)
-    bus.onCardChanged().subscribe(onCardChanged)
-    bus.onHover().subscribe(onHover)
-    bus.onDescent().subscribe(onDescent)
+    subscriptions.push(bus.moves().subscribe(onMove))
+    subscriptions.push(bus.onCardChanged().subscribe(onCardChanged))
+    subscriptions.push(bus.onHover().subscribe(onHover))
+    subscriptions.push(bus.onDescent().subscribe(onDescent))
+})
+onBeforeUnmount(() => {
+    for (const s of subscriptions) {
+        s.unsubscribe()
+    }
 })
 
 function onMove(msg: IMoveMessage): void {

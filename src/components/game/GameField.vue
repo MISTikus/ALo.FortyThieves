@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, provide, defineProps, onMounted, reactive, ref } from 'vue'
+import { inject, provide, defineProps, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { SlotType } from '@/models/Slot';
 import CardItem from '@/components/game/CardItem.vue'
 import CardSlot from '@/components/game/CardSlot.vue'
@@ -7,6 +7,7 @@ import type { IBus, ICardHoverMessage, IFinishMessage, IMoveMessage } from '@/se
 import type { IGame } from '@/services/game'
 import type ICard from '@/models/Card';
 import type { IStorage } from '@/services/storage';
+import { Subscription } from 'rxjs';
 
 const props = defineProps<{
     game: IGame
@@ -31,12 +32,13 @@ const resultStyles = ref<string[]>([])
 const columnStyles = ref<string[]>([])
 const closedStyle = ref('')
 const openedStyle = ref('')
+const subscriptions: Subscription[] = []
 
 onMounted(() => {
-    bus.finished().subscribe(onFinish)
-    bus.moves().subscribe(onCardMove)
-    bus.onHover().subscribe(onHover)
-    bus.onDescent().subscribe(onDescent)
+    subscriptions.push(bus.finished().subscribe(onFinish))
+    subscriptions.push(bus.moves().subscribe(onCardMove))
+    subscriptions.push(bus.onHover().subscribe(onHover))
+    subscriptions.push(bus.onDescent().subscribe(onDescent))
 
     setTimeout(() => {
         props.game.deck.forEach((card) => {
@@ -50,6 +52,12 @@ onMounted(() => {
         if (e.button !== 2) return;
         e.preventDefault()
         props.game.undo()
+    }
+})
+
+onBeforeUnmount(() => {
+    for (const s of subscriptions) {
+        s.unsubscribe()
     }
 })
 
