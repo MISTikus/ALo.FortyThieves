@@ -20,6 +20,7 @@ export class Storage implements IStorage {
 export interface IStorageData {
   settings: ISettings
   record: { time: number; moves: number } | null
+  stats: { total: number; win: number } | null
   // ToDo
   savedGame: {
     closed: string[]

@@ -20,7 +20,9 @@ if (!props.game) throw Error('Game service is not provided')
 if (!bus) throw Error('Bus service is not provided')
 if (!storage) throw Error('Bus service is not provided')
 
-const best = storage.read()?.record
+const storageData = storage.read()
+const best = storageData?.record
+const stats: { total: number; win: number } = storageData?.stats || { total: 1, win: 0 }
 
 provide('bus', bus)
 provide('game', props.game)
@@ -113,14 +115,15 @@ function onCardClicked(card: ICard) {
 function onFinish(msg: IFinishMessage): void {
     data.time = toTime(msg.time)
     data.moves = msg.moves
+    stats.win += 1
     data.showModal = true
-
+    const storageData = storage!.read()
+    if (!storageData) throw Error('No storage data available')
     if (!best || (msg.time < best.time || msg.moves < best.moves)) {
-        const storageData = storage!.read()
-        if (!storageData) throw Error('No storage data available')
-        storageData.record = { time: msg.time, moves: msg.moves }
-        storage?.write(storageData)
+        storageData.record = { time: msg.time, moves: msg.moves, }
     }
+    storageData.stats = { total: stats.total, win: stats.win }
+    storage?.write(storageData)
 }
 
 function toTime(time: number): string {
@@ -138,6 +141,11 @@ function toTime(time: number): string {
                 <p>Congratulations!</p>
                 <p><span>Time: {{ data.time }}</span> <span v-if="best">Best: {{ toTime(best.time) }}</span></p>
                 <p><span>Moves: {{ data.moves }}</span> <span v-if="best">Best: {{ best.moves }}</span></p>
+                <p>
+                    <span>Win: {{ stats.win }}</span>&nbsp;
+                    <span>Total: {{ stats.total }}</span>&nbsp;
+                    <span>Rate: {{ Math.round(stats.win / stats.total * 100) }}%</span>
+                </p>
             </div>
         </div>
         <div class="deck-row">

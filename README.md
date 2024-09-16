@@ -26,6 +26,7 @@ You can play it here: [Forty Thieves](https://mistikus.takedare.com/forty_thieve
 - ~~automate results click (FF)~~
 - ~~about page~~
 - save game
+- ~~win rate~~
 
 ---
 

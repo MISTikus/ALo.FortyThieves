@@ -15,6 +15,10 @@ const data = storage.read()
 if (!data) throw Error('No storage data available')
 const game = createGame(bus, data)
 
+const total = (data.stats?.total || 0) + 1
+data.stats = { total: total, win: data.stats?.win || 0 }
+storage.write(data)
+
 onBeforeUnmount(() => {
   game.onStop()
   //storage.write(game.state)
