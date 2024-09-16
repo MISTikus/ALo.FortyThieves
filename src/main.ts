@@ -15,7 +15,8 @@ if (!storageData) {
   storage.write({
     settings: createSettings(),
     record: null,
-    savedGame: null
+    savedGame: null,
+    stats: null
   })
 }
 
